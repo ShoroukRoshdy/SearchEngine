@@ -1,4 +1,4 @@
-package crawler;
+package searchengine;
 
 import com.mongodb.*;
 import java.io.*;
