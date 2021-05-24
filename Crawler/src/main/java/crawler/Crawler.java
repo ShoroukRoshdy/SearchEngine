@@ -1,20 +1,23 @@
-
 package crawler;
 
-import java.io.File;
-import java.io.FileWriter;
+import com.mongodb.*;
+import java.io.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.logging.Logger; 
+//MONGO
 
 
 
@@ -25,11 +28,12 @@ public class Crawler {
     //List of URLs
     private List<String> seed_Set;
     
+    private DataBase database;
+    
     public Crawler() throws IOException
     {
-        // Intialize data members
-        visited_Links = new HashSet<String>();
-
+       
+        database = new DataBase();
         File visited_File = new File("visited.txt");
         // if first time (there's no visited file) -> create and intialize
         if (!visited_File.createNewFile()) {
@@ -42,7 +46,7 @@ public class Crawler {
         }
         
         seed_Set = new ArrayList<String>();
-        File seeds_File = new File("C:\\Users\\aliaa\\Desktop\\Search Engine\\Crawler\\src\\main\\java\\crawler\\seeds.txt");
+        File seeds_File = new File("seeds.txt");
         Scanner myReader = new Scanner(seeds_File);
         while (myReader.hasNextLine()) {
             seed_Set.add(myReader.nextLine());
@@ -61,7 +65,7 @@ public class Crawler {
       otherwise it returns false if it didnt found any disallow or it it faced any problem
     */
    
-    public boolean getRobotDiallows(String theDomainUrl,HashSet<String> theDisallows )
+    public boolean getRobotDiallows(String theDomainUrl,HashSet<String> theDisallows ) throws IOException
     {
      try
      {
@@ -94,11 +98,6 @@ public class Crawler {
              // if the robot.txt has a disallow statement this will be equal to true else false
              return isDisallowExist;
          } 
-         catch (IOException e) 
-           {
-             e.printStackTrace();
-             return false;
-           }        
     } 
        catch (MalformedURLException e1) 
     {
@@ -119,7 +118,7 @@ public class Crawler {
 
     
     try {
-        Example test = new Example();
+        Crawler test = new Crawler();
         HashSet<String> DisallowLinks=new HashSet<String>();  
         Boolean ifRobotRulesExist =test.getRobotDiallows("https://moz.com/",DisallowLinks);
        
@@ -150,12 +149,15 @@ public class Crawler {
     {
         // loop on each url in the seed_Set
         int i =0;
-        FileWriter myWriter = new FileWriter("C:\\Users\\aliaa\\Desktop\\Search Engine\\Crawler\\src\\main\\java\\crawler\\seeds.txt");
+        FileWriter myWriter = new FileWriter("seeds.txt");
         FileWriter visitedWriter = new FileWriter("visited.txt");
      
         while (i < seed_Set.size() && seed_Set.size() <500)
         {
+            System.out.println(i);
             System.out.println(seed_Set.size());
+            System.out.println(seed_Set.get(i));
+
              // check if the have been visited 
             if (visited_Links.contains(seed_Set.get(i)) == false)
             {
@@ -167,7 +169,7 @@ public class Crawler {
                 // Fetch the url
                 Document document = Jsoup.connect(seed_Set.get(i)).get();
                 // parse the HTML document to extract links to other URLs
-                Elements page_Links = document.select("a[href]");
+                Elements page_Links = document.select("a");
 
                 //Loop on all extracted links and push them in the seed_set
                 int depth=0;
@@ -188,12 +190,16 @@ public class Crawler {
     
     
     public static void main(String[] args) throws IOException {
+     
         Crawler crawler = new Crawler();
+       System.out.println("CONNECTED");
+
+        
         try {
             crawler.crawl();
         } catch (IOException ex) {
             Logger.getLogger(Crawler.class.getName()).log(Level.SEVERE, null, ex);
-        }           
+        } 
     }
    
 }
