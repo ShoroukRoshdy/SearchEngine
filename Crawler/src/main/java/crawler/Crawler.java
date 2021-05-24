@@ -1,8 +1,4 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
+
 package crawler;
 
 import java.io.File;
@@ -21,10 +17,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-/**
- *
- * @author aliaa
- */
+
 public class Crawler {
     // HashSet For VisitedLinks 
     // Why HashSet -> Fast Searching if the link visited before or not
@@ -57,6 +50,101 @@ public class Crawler {
         myReader.close();
        
     }
+
+
+        /*
+      getRobotDiallows funcs takes an
+
+      Input:(empty hashset , the Url as a string )
+
+      Return: it searches for any disallows in the robots.txt and returns true if found any disallows
+      otherwise it returns false if it didnt found any disallow or it it faced any problem
+    */
+   
+    public boolean getRobotDiallows(String theDomainUrl,HashSet<String> theDisallows )
+    {
+     try
+     {
+         ////geting the url of the robot.txt
+        URL urlRobot = new URL(theDomainUrl);
+        String theRobotUrl =urlRobot.getProtocol()+"://"+urlRobot.getHost()+"/robots.txt";
+        ////opening the robot.txt 
+        String line = null;
+        String RobotCommands = new String("");;
+        try(BufferedReader in = new BufferedReader( new InputStreamReader(new URL(theRobotUrl).openStream())))
+         {
+            Boolean isDisallowExist= false;
+        //// saving the robot.text 
+             while((line = in.readLine()) != null) 
+             {
+                // checking for disallow
+                if (line.contains("Disallow")) 
+                {
+                    isDisallowExist=true;   
+               /// removing "Disallow: from the line"
+                    RobotCommands = line;
+                    int startIndex = RobotCommands.indexOf(":");
+                    int endIndex = line.length();
+                    RobotCommands=RobotCommands.substring(startIndex+2 , endIndex);
+                    RobotCommands.trim();
+               ///saving the extentsion in the hashset 
+                    theDisallows.add(urlRobot.getProtocol()+"://"+urlRobot.getHost()+RobotCommands);  
+                }  
+            }
+             // if the robot.txt has a disallow statement this will be equal to true else false
+             return isDisallowExist;
+         } 
+         catch (IOException e) 
+           {
+             e.printStackTrace();
+             return false;
+           }        
+    } 
+       catch (MalformedURLException e1) 
+    {
+        // Tthe URL is not correct 
+        e1.printStackTrace();
+    }
+        return false;
+   }
+
+   /*
+   runs a hard coded test case to test  getRobotDiallows()  func
+   
+   */
+
+   public void testgetRobotDiallows()
+   {
+        /// robots.txt test getRobotDiallows()
+
+    
+    try {
+        Example test = new Example();
+        HashSet<String> DisallowLinks=new HashSet<String>();  
+        Boolean ifRobotRulesExist =test.getRobotDiallows("https://moz.com/",DisallowLinks);
+       
+        if(ifRobotRulesExist )
+        {
+            Iterator<String> i=DisallowLinks.iterator();  
+            while(i.hasNext())  
+            {  
+            System.out.println(i.next());  
+            }  
+        }
+        else 
+        {
+            System.out.println("no Disallows in robots or the robots.txt doesnt exist");
+        }
+
+    } 
+    
+    catch (IOException e) {
+        e.printStackTrace();
+    }
+
+   }
+    
+
     
     public void crawl() throws IOException
     {
