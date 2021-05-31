@@ -26,10 +26,14 @@ public class DataBase {
         database = mongoClient.getDB("myFirstDatabase");
 
     }
+
+    public DB getDatabase() {
+        return database;
+    }
     
     public DBCursor findDocument(String Collection,DBObject query)
     {
-        DBCollection collection = database.getCollection("TEST");
+        DBCollection collection = database.getCollection(Collection);
         DBCursor cursor = collection.find(query);
         return cursor;
 //        query:
@@ -40,10 +44,13 @@ public class DataBase {
 //        }
     }
     
-    
+    public DBCollection getCollection(String Collection)
+    {
+        return database.getCollection(Collection);
+    }
     public void insertDocument(String Collection,DBObject query)
     {
-        DBCollection collection = database.getCollection("TEST");
+        DBCollection collection = database.getCollection(Collection);
         collection.insert(query);
     }
           

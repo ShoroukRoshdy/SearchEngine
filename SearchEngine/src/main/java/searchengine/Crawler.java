@@ -17,189 +17,275 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger; 
+import java.util.regex.*;  
+
 //MONGO
 
 
 
 public class Crawler {
-    // HashSet For VisitedLinks 
-    // Why HashSet -> Fast Searching if the link visited before or not
-    private HashSet<String> visited_Links;
-    //List of URLs
-    private List<String> seed_Set;
-    
+   
+
     private DataBase database;
+    
+    static int seedsSize = 0;
     
     public Crawler() throws IOException
     {
        
         database = new DataBase();
-        File visited_File = new File("visited.txt");
-        // if first time (there's no visited file) -> create and intialize
-        if (!visited_File.createNewFile()) {
-        //if crawler interrupted -> load visited urls from visited file into visited set
-            Scanner myReader = new Scanner(visited_File);
-            while (myReader.hasNextLine()) {
-              visited_Links.add(myReader.nextLine());
-            }
-            myReader.close();
-        }
         
-        seed_Set = new ArrayList<String>();
+        database.getCollection("Seeds").drop();
+         database.getCollection("Robot").drop();
+       
         File seeds_File = new File("seeds.txt");
         Scanner myReader = new Scanner(seeds_File);
+        int i =0;
         while (myReader.hasNextLine()) {
-            seed_Set.add(myReader.nextLine());
+            DBObject seeds =  new BasicDBObject("URL",myReader.nextLine() );
+            seeds.put("index", i);                    
+            seeds.put("Visited", false);
+            database.insertDocument("Seeds",seeds );
+            i++;
+            seedsSize++;
         }
         myReader.close();
        
     }
-
-
-        /*
-      getRobotDiallows funcs takes an
-
-      Input:(empty hashset , the Url as a string )
-
-      Return: it searches for any disallows in the robots.txt and returns true if found any disallows
-      otherwise it returns false if it didnt found any disallow or it it faced any problem
-    */
-   
-    public boolean getRobotDiallows(String theDomainUrl,HashSet<String> theDisallows ) throws IOException
-    {
-     try
-     {
-         ////geting the url of the robot.txt
-        URL urlRobot = new URL(theDomainUrl);
-        String theRobotUrl =urlRobot.getProtocol()+"://"+urlRobot.getHost()+"/robots.txt";
-        ////opening the robot.txt 
-        String line = null;
-        String RobotCommands = new String("");;
-        try(BufferedReader in = new BufferedReader( new InputStreamReader(new URL(theRobotUrl).openStream())))
-         {
-            Boolean isDisallowExist= false;
-        //// saving the robot.text 
-             while((line = in.readLine()) != null) 
-             {
-                // checking for disallow
-                if (line.contains("Disallow")) 
-                {
-                    isDisallowExist=true;   
-               /// removing "Disallow: from the line"
-                    RobotCommands = line;
-                    int startIndex = RobotCommands.indexOf(":");
-                    int endIndex = line.length();
-                    RobotCommands=RobotCommands.substring(startIndex+2 , endIndex);
-                    RobotCommands.trim();
-               ///saving the extentsion in the hashset 
-                    theDisallows.add(urlRobot.getProtocol()+"://"+urlRobot.getHost()+RobotCommands);  
-                }  
-            }
-             // if the robot.txt has a disallow statement this will be equal to true else false
-             return isDisallowExist;
-         } 
-    } 
-       catch (MalformedURLException e1) 
-    {
-        // Tthe URL is not correct 
-        e1.printStackTrace();
-    }
-        return false;
-   }
-
-   /*
-   runs a hard coded test case to test  getRobotDiallows()  func
-   
-   */
-
-   public void testgetRobotDiallows()
-   {
-        /// robots.txt test getRobotDiallows()
-
     
-    try {
-        Crawler test = new Crawler();
-        HashSet<String> DisallowLinks=new HashSet<String>();  
-        Boolean ifRobotRulesExist =test.getRobotDiallows("https://moz.com/",DisallowLinks);
-       
-        if(ifRobotRulesExist )
-        {
-            Iterator<String> i=DisallowLinks.iterator();  
-            while(i.hasNext())  
-            {  
-            System.out.println(i.next());  
-            }  
-        }
-        else 
-        {
-            System.out.println("no Disallows in robots or the robots.txt doesnt exist");
-        }
-
-    } 
-    
-    catch (IOException e) {
-        e.printStackTrace();
-    }
-
-   }
-    
-
     
     public void crawl() throws IOException
     {
-        // loop on each url in the seed_Set
         int i =0;
-        FileWriter myWriter = new FileWriter("seeds.txt");
-        FileWriter visitedWriter = new FileWriter("visited.txt");
-     
-        while (i < seed_Set.size() && seed_Set.size() <500)
+        DBObject url;
+        do
         {
-            System.out.println(i);
-            System.out.println(seed_Set.size());
-            System.out.println(seed_Set.get(i));
+//            get URL from database by its index -> index field based on i
+            url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("index", i));
 
-             // check if the have been visited 
-            if (visited_Links.contains(seed_Set.get(i)) == false)
+             // check if visited before
+            if( url.get("Visited").equals(false))
             {
-                // if not -> Add it to the visited set
-                visited_Links.add(seed_Set.get(i));
-                visitedWriter.write(seed_Set.get(i)+"\n");
-
-            
-                // Fetch the url
-                Document document = Jsoup.connect(seed_Set.get(i)).get();
+                
+//                Set Visited Value to True 
+                BasicDBObject visitedField = new BasicDBObject().append("$set", new BasicDBObject().append("Visited", true));
+                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), visitedField);
+               
+                
+//               Fetch the url
+                Document document = Jsoup.connect(url.get("URL").toString()).get();
                 // parse the HTML document to extract links to other URLs
                 Elements page_Links = document.select("a");
+               
+                
+//                Check Robot.txt
+            HashSet<String> Disallow = new HashSet<String>();
+            HashSet<String> Allow = new HashSet<String>();
+            String host=getHostName(url.get("URL").toString());
+            DBObject robot =database.getDatabase().getCollection("Robot").findOne(new BasicDBObject("Host", host));
+            if (robot== null)
+            {
+                System.out.println(host);
+                getAllowDisallow(host,Disallow,Allow);
+//               Add Allow ,Disallows             
+               DBObject query =  new BasicDBObject("Host",host );
+                query.put("Allow", Allow);                    
+                query.put("Disallow", Disallow);
+                database.insertDocument("Robot",query );
+            }
+            else
+            {
+                BasicDBList DisallowDB = (BasicDBList)robot.get("Disallow"); 
+                for (Object d: DisallowDB)
+                    Disallow.add(d.toString());
+                BasicDBList AllowDB = (BasicDBList) robot.get("Allow");
+                 for (Object d: AllowDB)
+                    Allow.add(d.toString());
+               
+            }
+                
 
+                
                 //Loop on all extracted links and push them in the seed_set
                 int depth=0;
                 for (Element newurl : page_Links) {
-                    if (depth > 10)
-                        break;
-                    seed_Set.add(newurl.attr("abs:href"));
-                    myWriter.write(newurl.attr("abs:href")+"\n");
+//                    if (depth > 10 )
+//                        break;
+//                                    
+                    if (newurl.attr("abs:href") == "" )
+                        continue;
+                    else if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
+                    {   
+                        System.out.println("Disallowed : " + newurl.attr("abs:href"));
+                        continue; 
+                    }   
+                    
+                    DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", newurl.attr("abs:href") ));
+
+                    if (newurlDB == null)
+                    {
+                        DBObject newURL =  new BasicDBObject("URL",newurl.attr("abs:href") );
+                        newURL.put("index", seedsSize);                    
+                        newURL.put("Visited", false);
+                        seedsSize++;
+                        database.insertDocument("Seeds",newURL );
+                    }
                     depth++;
                 } 
             }
             
             i++;
-        }   
-        myWriter.close();
-        visitedWriter.close();
+        } while (url != null && seedsSize<= 1000);
     }
     
+    public String getHostName (String URL) throws MalformedURLException
+    {
+         URL url = new URL(URL);
+        return url.getProtocol()+"://"+url.getHost();     
+   }
+    public boolean checkAllow (String url,HashSet<String> Allow)
+    {
+        for (String A : Allow)
+        {
+            if(url.matches(A))
+                return true;
+        }
+        return false;
+    }
+    
+    public boolean checkDisallow(String url,HashSet<String> Disallow)
+    {
+        for (String D : Disallow)
+        {
+            if(url.matches(D))
+                return true;
+        }
+        return false;
+    }
+    
+    public void getAllowDisallow(String theDomainUrl,HashSet<String> Disallow,HashSet<String> Allow) throws IOException
+    {
+           
+        //geting the url of the robot.txt
+        URL urlRobot = new URL(theDomainUrl);
+        String theRobotUrl =urlRobot.getProtocol()+"://"+urlRobot.getHost()+"/robots.txt"; 
+
+         try(BufferedReader in = new BufferedReader( new InputStreamReader(new URL(theRobotUrl).openStream())))
+         {
+              String line = null;
+              while((line = in.readLine()) != null) 
+             {
+                 if (line.contains("User-agent: *"))
+                 {
+
+                     while (true)
+                     {
+                         line = in.readLine();
+                         
+                         if (line==null)
+                             break;
+                         else if( line.contains("User-agent: ") )
+                            break;
+                         if (line.contains("Disallow"))
+                         {
+                             line= line.substring(line.indexOf(":")+2,line.length());
+
+                             int i =0;
+                            while ( i< line.length())
+                            {
+                                if ( line.charAt(i) == '*' )
+                                {
+                                    line=line.substring(0, i) + '.' + line.substring(i,line.length());
+                                  
+                                    i++;
+                                }
+                                else if (line.charAt(i) == '.')
+                                {
+                                    line=line.substring(0 , i) + '\\' + line.substring(i,line.length());
+                                    i++;
+                                }
+                                else if (line.charAt(i) == '+')
+                                {
+                                    line=line.substring(0 , i) + '\\' + line.substring(i,line.length());
+                                   i++;
+                                }
+                                else if (line.charAt(i) == '?')
+                                {
+                                    line=line.substring(0, i) + '\\' + line.substring(i,line.length()); 
+                                    i++;
+                                }
+
+                                i++; 
+
+                            }  
+                             
+                             Disallow.add(".*" +line);
+                        }
+                        else if (line.contains("Allow"))
+                        {              
+
+                            line=  line.substring(line.indexOf(":")+2 ,line.length());
+
+                            int i =0;
+                             while ( i< line.length())
+                             {
+                                 if ( line.charAt(i) == '*' )
+                                {
+                                    line=line.substring(0 , i) + '.' + line.substring(i,line.length());
+                                    i++;
+                                }
+                                else if (line.charAt(i) == '.')
+                                {
+                                    line=line.substring(0 , i) + '\\' + line.substring(i,line.length());
+                                    i++;
+                                }
+                                else if (line.charAt(i) == '+')
+                                {
+                                    line=line.substring(0 , i) + '\\' + line.substring(i,line.length());
+                                    i++;
+
+                                }
+                                else if (line.charAt(i) == '?')
+                                {     
+                                    line=line.substring(0 , i) + '\\' + line.substring(i,line.length());
+                                    i++;
+                                }
+                                i++;
+
+                             }
+
+                                                        
+                             Allow.add(".*" +line);
+                         }
+                         
+                     }
+                 }
+             }  
+        }
+        catch(MalformedURLException e1) {
+        }
+           
+           
+       }
     
     public static void main(String[] args) throws IOException {
      
         Crawler crawler = new Crawler();
-       System.out.println("CONNECTED");
-
         
-        try {
-            crawler.crawl();
-        } catch (IOException ex) {
-            Logger.getLogger(Crawler.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        crawler.crawl();
+//        HashSet<String> Disallow = new HashSet<String>();
+//        HashSet<String> Allow = new HashSet<String>();
+//        crawler.getAllowDisallow("https://www.amazon.com/",Disallow,Allow);
+//        System.out.println("https://www.amazon.com/wishlist/universal/2313541");
+//        System.out.println("Allow : "+crawler.checkAllow("https://www.amazon.com/wishlist/universal/2313541", Allow));
+//        System.out.println("Disallow : "+crawler.checkDisallow("https://www.amazon.com/wishlist/universal/2313541", Disallow));
+//        System.out.println("https://www.amazon.com/wishlist/");
+//        System.out.println("Allow : "+crawler.checkAllow("https://www.amazon.com/wishlist/", Allow));
+//        System.out.println("Disallow : "+crawler.checkDisallow("https://www.amazon.com/wishlist/", Disallow));
     }
    
+  
+ 
+   
+
 }
