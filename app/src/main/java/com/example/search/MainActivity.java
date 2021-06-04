@@ -3,27 +3,20 @@ package com.example.search;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.speech.RecognizerIntent;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 import android.os.Bundle;
@@ -31,12 +24,13 @@ import android.os.Bundle;
 public class MainActivity extends AppCompatActivity {
 
     // getting the views from the activity
+    private String[] suggestlist = {"sam","sara","sania","sami" };
     private static final int REQUEST_CODE_SPEECH_INPUT=1000;
     TextView instrc1;
     ImageButton VoiceBttn;
-    EditText searchedittext;
     Button searchbttn;
     String FinalQuery;
+    AutoCompleteTextView suggestmenu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -47,8 +41,11 @@ public class MainActivity extends AppCompatActivity {
 
         instrc1=findViewById(R.id.text);
         VoiceBttn=findViewById(R.id.VoiceText);
-        searchedittext=findViewById(R.id.editTextsearch);
+
         searchbttn=findViewById(R.id.button);
+        suggestmenu=findViewById(R.id.autotext);
+        ArrayAdapter<String> adapter =new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1,suggestlist);
+        suggestmenu.setAdapter(adapter);
         // getting the speech to text dialog
 
         VoiceBttn.setOnClickListener(new View.OnClickListener() {
@@ -60,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
         searchbttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                FinalQuery= searchedittext.getText().toString();
+                FinalQuery= suggestmenu.getText().toString();
                 Toast.makeText(MainActivity.this,FinalQuery,Toast.LENGTH_SHORT).show();
             }
         });
@@ -100,8 +97,8 @@ public class MainActivity extends AppCompatActivity {
                 if (resultCode ==RESULT_OK && null!=data)
                 {
                     ArrayList<String> res = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                    searchedittext.setText(res.get(0));
-                    FinalQuery=searchedittext.getText().toString();
+                    suggestmenu.setText(res.get(0));
+                    FinalQuery=suggestmenu.getText().toString();
                 }
                 break;
             }
