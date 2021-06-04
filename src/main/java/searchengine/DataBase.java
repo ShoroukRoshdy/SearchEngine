@@ -47,6 +47,9 @@ public class DataBase {
         collection.insert(query);
     }
           
+     public DB getDatabase() {
+        return database;
+    }
 
 
     public static MongoClient getMongoClient() {
