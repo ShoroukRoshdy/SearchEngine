@@ -62,7 +62,7 @@ public class Crawler implements Runnable {
         {  
             synchronized(database)
             {
-                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count()== 1000)
+                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 20)
                     break;
                 
                 url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
@@ -76,23 +76,13 @@ public class Crawler implements Runnable {
                     }
                     url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
 
-                }
-                System.out.println("Tthread " + Thread.currentThread().getName() + " Assigned " + url.get("Assigned"));    
-
-                System.out.println("Tthread " + Thread.currentThread().getName() + " Wakes up" ); 
-                
-                
-                BasicDBObject visitedField = new BasicDBObject().append("$set", new BasicDBObject().append("Assigned", true));
-                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), visitedField);
-                
-                
-                
-                
-                System.out.println("I'm thread " + Thread.currentThread().getName() + " , Working on " +url.get("URL") );     
+                }             
+                BasicDBObject assignedField = new BasicDBObject().append("$set", new BasicDBObject().append("Assigned", true));
+                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), assignedField);
             }
-             // check if visited before
-//            if( url.get("Visited") ==False)
-//            {   
+            
+            System.out.println("I'm thread " + Thread.currentThread().getName() + " , Working on " +url.get("URL") );     
+  
 //               Fetch the url
                 Document document = Jsoup.connect(url.get("URL").toString()).timeout(500000).get();
                 // parse the HTML document to extract links to other URLs
@@ -106,16 +96,18 @@ public class Crawler implements Runnable {
             DBObject robot =null;
             synchronized(robotLock){
                 robot =database.getDatabase().getCollection("Robot").findOne(new BasicDBObject("Host", host));
+            
                 if (robot== null)
                 {
                     getAllowDisallow(host,Disallow,Allow);
     //               Add Allow ,Disallows             
-                   DBObject query =  new BasicDBObject("Host",host );
+                    DBObject query =  new BasicDBObject("Host",host );
                     query.put("Allow", Allow);                    
                     query.put("Disallow", Disallow);
                     database.insertDocument("Robot",query );
-                }       
-                else
+                }  
+            }
+                if (robot !=null)
                 {
                     BasicDBList DisallowDB = (BasicDBList)robot.get("Disallow"); 
                     for (Object d: DisallowDB)
@@ -124,15 +116,11 @@ public class Crawler implements Runnable {
                      for (Object d: AllowDB)
                         Allow.add(d.toString()); 
                 }
-            }
-                
-
-                
                 //Loop on all extracted links and push them in the seed_set
                 int depth =0;
                 for (Element newurl : page_Links) {
-                    if (depth > 20)
-                        break;
+//                    if (depth > 20)
+//                        break;
                     if (newurl.attr("abs:href") == "" )
                         continue;
                     else if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
@@ -144,19 +132,15 @@ public class Crawler implements Runnable {
 //                    Check if this link already in database
                     synchronized(database)
                     {
-                        DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", newurl.attr("abs:href") ));
+                        DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", normalize(newurl.attr("abs:href")) ));
                     
                         if (newurlDB == null)
                         {
-                            DBObject newURL =  new BasicDBObject("URL",newurl.attr("abs:href") );
-//                            newURL.put("index", seedsSize);  
+                            DBObject newURL =  new BasicDBObject("URL",normalize(newurl.attr("abs:href")) );
                             newURL.put("Visited", false); 
                             newURL.put("Assigned", false);
-//                            seedsSize++;
-                            depth++;
-
-                                database.insertDocument("Seeds",newURL );
-                                database.notify();
+                            database.insertDocument("Seeds",newURL );
+                            database.notify();
                         }
 
                     }
@@ -164,27 +148,27 @@ public class Crawler implements Runnable {
                 
                 //                Set Visited Value to True 
                 BasicDBObject visitedField = new BasicDBObject().append("$set", new BasicDBObject().append("Visited", true));
-                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), visitedField);
                 synchronized(database)
                 {
+                    database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), visitedField);
                     visited = database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true)).count();
-                    System.out.println("I'm thread " + Thread.currentThread().getName() + " , Visited " +visited );           
                 }
            
- 
+                System.out.println("I'm thread " + Thread.currentThread().getName() + " , Visited " +visited );           
+
 
           
-        } while (visited<= 1000);
+        } while (visited<= 20);
         System.out.println("Thread: " + Thread.currentThread().getName() + " Finished" );           
 
     }
   
     /////////////////////////////////////////////////  Functions Related to Robot.txt ////////////////////////////////////////////////////////////////
 
-    public String getHostName (String URL) throws MalformedURLException
+    public static String getHostName (String URL) throws MalformedURLException
     {
-         URL url = new URL(URL);
-        return url.getProtocol()+"://"+url.getHost();     
+        URL url = new URL(URL);
+        return url.getProtocol().toLowerCase()+"://"+url.getHost().toLowerCase();     
    }
     
     public boolean checkAllow (String url,HashSet<String> Allow)
@@ -320,8 +304,45 @@ public void run()
             Logger.getLogger(Crawler.class.getName()).log(Level.SEVERE, null, ex);
         }
 }
+/////////////////////////////////////////////////  Normalize Functions Functions  ////////////////////////////////////////////////////////////////
+public static String normalize(String URL) throws MalformedURLException
+{
+    //    Remove #
+    if (URL.contains("#"))
+    {
+        URL =  URL.replace("#", "");
+    }
+    URL  url = new URL(URL);
+//    Add www
+    if(!( URL.contains("www.") || URL.contains("WWW.") ))
+    {
+       URL =  url.getProtocol().toLowerCase()+"://"+"www."+url.getHost().toLowerCase()+url.getPath();   
+    }
+//   remove index.html
+    if(URL.endsWith("index.html")  || URL.endsWith("index.html/"))
+    {
+        URL =  URL.replace("index.html", "");
+    }
+    if (URL.endsWith("index")  || URL.endsWith("index/"))
+    {
+        URL =  URL.replace("index", "");
+    } 
+ 
+   //    Add trailing slash    
+    if (!URL.endsWith("/"))
+    {
+        URL =  URL+ "/";  
+    }
+
+    
+   
+        
+    return URL;
+    
+}
+
 /////////////////////////////////////////////////  Loading Functions  ////////////////////////////////////////////////////////////////
-public static void firstTime(DataBase db) throws FileNotFoundException
+public static void firstTime(DataBase db) throws FileNotFoundException, MalformedURLException
 {
     //      Reading From seeds.txt into database        
     
@@ -334,7 +355,7 @@ public static void firstTime(DataBase db) throws FileNotFoundException
 //        int i =0;
         while (myReader.hasNextLine()) {
 //            New Document has URL , index 
-            DBObject seeds =  new BasicDBObject("URL",myReader.nextLine() );
+            DBObject seeds =  new BasicDBObject("URL",normalize(myReader.nextLine()));
 //            seeds.put("index", i); 
 //            to be deleted --> check if doesn't exist
             seeds.put("Visited", false); 
@@ -357,7 +378,7 @@ public static void Continue(DataBase db)
 
 /////////////////////////////////////////////////  main Function  ////////////////////////////////////////////////////////////////
 
-    public static void main(String[] args) throws IOException, InterruptedException 
+    public static void main(String[] args) throws IOException, InterruptedException, URISyntaxException 
     {
         Scanner scanner = new Scanner(System.in);
         DataBase db = new DataBase();
@@ -387,12 +408,11 @@ public static void Continue(DataBase db)
             threads[j].join();
         }
 
-//               JOIN
-                // parse the HTML document to extract links to other URLs
-    }
-   
-  
  
+//
+   }
+   
+   
    
 
 }
