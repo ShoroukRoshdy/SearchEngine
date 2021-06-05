@@ -36,17 +36,29 @@ import java.lang.Math;
 public class Indexer {
     
      
-             
+    static ArrayList<Document> documents;
+    static int ThreadsNumber;                
     static DataBase db = new DataBase();
     static ArrayList<String> stopWords = new ArrayList<>();
     static int totalDocNumber;
+
+    public void setDocuments(ArrayList<Document> documents) {
+        this.documents = documents;
+    }
+
+    public static void setThreadsNumber(int ThreadsNumber) {
+        Indexer.ThreadsNumber = ThreadsNumber;
+    }
+    
+    
+    
+    
     public static class WordDetails
     {
       public  String word;
       public  int occurence;
       ArrayList<String> tags = new ArrayList<>();  
       ArrayList<String> wordTags=new ArrayList<>();
-    
 
         public void setWord(String w)
            {word=w; }
@@ -98,12 +110,12 @@ public class Indexer {
      }
     
     public static class IndexerThread implements Runnable {
-       Document [] doc;
-//       ArrayList<String> stopWords; 
+//       Document [] doc;
+//       ArrayList<Sring> stopWords; 
+        
        int docNumber;
-         public IndexerThread(Document[] d )
+         public IndexerThread()
          {
-             doc=d;
          }
          void Indexing()
          {
@@ -120,15 +132,21 @@ public class Indexer {
              
               System.out.print("-------------------------------------> ANA NEW THREAD");
 
+//              0 -> 0 , 0+3 = 3 , 3+3 = 6, 
+//              1 -> 1 , 1+3 = 4 , 4+3 =7,
                    //---------------------- Iterating on documents per thread ---------------------- //
-                   
-                  for(int r=0;r<doc.length;r++)
-             {
-                 Elements head = doc[r].head().select("*");
-               for (Element element : head) {
-                 tag= element.tagName();
-                 str= element.ownText();
-                 str = str.replaceAll("[^0-9a-zA-Z @!]", ""); // <---------- Not sure if it's accurate
+
+            int currentThread = Integer.parseInt(Thread.currentThread().getName());
+            System.out.println("Hello from Thread " + currentThread +  " Number of Document " + documents.size());
+            
+
+            for(int r=currentThread ; r<documents.size()  ;  r = r+ ThreadsNumber )
+            {
+                Elements head = documents.get(r).head().select("*");
+                for (Element element : head) {
+                    tag= element.tagName();
+                    str= element.ownText();
+                    str = str.replaceAll("[^0-9a-zA-Z @!]", ""); // <---------- Not sure if it's accurate
 
                   // ---------------- Splitting the word in each sentence ---------------- //
                     for (String word : str.split(" ")) {
@@ -146,7 +164,7 @@ public class Indexer {
             }
              
               // --------------- Getting all words in the body of the document --------------- //
-               Elements body = doc[r].body().select("*");
+               Elements body = documents.get(r).body().select("*");
             for (Element element : body) {
                    tag= element.tagName();
                    str= element.ownText();
@@ -296,7 +314,7 @@ public class Indexer {
                                        
                                       }
                                     
-                                    parsedUrls.put("url"+urlsCounter, doc[r].location());
+                                    parsedUrls.put("url"+urlsCounter, documents.get(r).location());
 
                             }
                             
@@ -334,7 +352,7 @@ public class Indexer {
                             idf=Math.log(totalDocNumber/1); //<------ only 1 document so far
                             //---------------------> First occurence of the word
                             
-                           Map<String,String> url=Map.of("url1",doc[r].location());;
+                           Map<String,String> url=Map.of("url1",documents.get(r).location());;
 //                            MapInitializer.url.put( );
                             BasicDBObject documentDetail = new BasicDBObject();
                            for (int k=0;k<w.tags.size();k++)
@@ -366,45 +384,41 @@ public class Indexer {
         Indexing();
     }
     }
-   public static void main(String[] args) throws IOException, InterruptedException
+   public static void toRun() throws IOException, InterruptedException
     {
+        db.getCollection("WordDetails").drop();
            // ------------------------ Get total no. of documents ------------------------ //
              totalDocNumber=db.getDatabase().getCollection("Seeds").find().count();
 
             
              // ------------------------ Reading stop words from the .txt file ------------------------ //
-              try {
+            try {
                 File myObj = new File("stopwords.txt");
                 Scanner myReader = new Scanner(myObj);
                 while (myReader.hasNextLine()) {
                  stopWords.add (myReader.nextLine());
                 }
                 myReader.close();
-              } catch (FileNotFoundException e) {
+            } catch (FileNotFoundException e) {
                 System.out.println("An error occurred.");
-              }
-             
-             Document doc = Jsoup.connect("https://en.wikipedia.org/wiki/Document").get();
-             Document doc2 = Jsoup.connect("https://en.wikipedia.org/wiki/Happiness").get();
-             Document doc3 = Jsoup.connect("https://en.wikipedia.org/wiki/Happiness").get();
-             Document doc4 = Jsoup.connect("https://en.wikipedia.org/wiki/Document").get();
-//             String [] arr={"https://en.wikipedia.org/wiki/Document","https://en.wikipedia.org/wiki/Happiness"};
-                 IndexerThread t1 = new IndexerThread(new Document[]{doc});
-                 IndexerThread t2 = new IndexerThread(new Document[]{doc});
-                 Thread thread1 = new Thread(t1,"1");
-                 Thread thread2 = new Thread(t2,"2");
-                 thread1.start();
-                 thread2.start();
-                 thread1.join();
-                 thread2.join();
-//                  System.out.println("-------------------> Done");
-//                wordsdocs.forEach(p -> System.out.println(p.word));
-//                 wordsdocs.forEach(p -> System.out.println(p.id));
-                 
+            }
+
+        Thread[] threads = new Thread[ThreadsNumber];
+        
+//        IndexerThread t1 = new IndexerThread();
+        for (int j =0;j < ThreadsNumber ;j++)
+        {
+            Thread thread = new Thread(new IndexerThread());
+            thread.setName(Integer.toString(j));
+            threads[j] = thread;
+            thread.start();
+        }
+        for (int j =0;j < ThreadsNumber;j++)
+        {
+            threads[j].join();
+        }
+
       }       
    
     }
-//}
-
-
-//         
+        

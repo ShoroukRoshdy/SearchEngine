@@ -12,6 +12,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,32 +22,31 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger; 
 import java.util.regex.*;  
+import org.jsoup.Connection.Response;
 
 //MONGO
 
 
 
 public class Crawler implements Runnable {
-   
+ 
+//////////////////////////////// Data Members ////////////////////////////////////////////
 
-    private DataBase database;
-    
-//    Number of URLs in the database
+    static int ThreadsNumber;   
     static final Object robotLock = new Object();
-    
+    private DataBase database;
     static final Object visitedLock = new Object();
-//    static int seedsSize = 0;
-    static int ThreadsNumber;
+    
+//    /////////////////////////////// Getters ////////////////////////////////////////////
+    public static int getThreadsNumber() {
+        return ThreadsNumber;
+    }
+    
+ 
     public Crawler(int num,DataBase db)  throws IOException
     {
-//         seedsSize = Size;
         ThreadsNumber = num;
         database = db;
-        
-//      delete anything in the database -> to be deleted
-//        database.getCollection("Seeds").drop();
-//        database.getCollection("Robot").drop();
-    
        
     }
     
@@ -62,7 +62,7 @@ public class Crawler implements Runnable {
         {  
             synchronized(database)
             {
-                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 20)
+                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 2)
                     break;
                 
                 url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
@@ -84,9 +84,16 @@ public class Crawler implements Runnable {
             System.out.println("I'm thread " + Thread.currentThread().getName() + " , Working on " +url.get("URL") );     
   
 //               Fetch the url
-                Document document = Jsoup.connect(url.get("URL").toString()).timeout(500000).get();
-                // parse the HTML document to extract links to other URLs
-                Elements page_Links = document.select("a");
+            Document document = Jsoup.connect(url.get("URL").toString()).timeout(500000).get();
+//            Save document in database
+            BasicDBObject Field = new BasicDBObject().append("$set", new BasicDBObject().append("Document", document.toString()));
+            database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), Field);
+            
+           
+            // parse the HTML document to extract links to other URLs
+            Elements page_Links = document.select("a");
+            
+            
                
                 
 //                Check Robot.txt
@@ -158,7 +165,7 @@ public class Crawler implements Runnable {
 
 
           
-        } while (visited<= 20);
+        } while (visited<= 2);
         System.out.println("Thread: " + Thread.currentThread().getName() + " Finished" );           
 
     }
@@ -378,19 +385,19 @@ public static void Continue(DataBase db)
 
 /////////////////////////////////////////////////  main Function  ////////////////////////////////////////////////////////////////
 
-    public static void main(String[] args) throws IOException, InterruptedException, URISyntaxException 
+    public static void toRun(DataBase db,int numberOfThreads) throws IOException, InterruptedException
     {
+       
         Scanner scanner = new Scanner(System.in);
-        DataBase db = new DataBase();
         System.out.println("Enter 1 if First Time , 2 if Continue");
         int option = scanner.nextInt();
         if (option == 1)
             firstTime(db);
         else
             Continue(db);
+        
 //        get user input  --> number of threads
-        System.out.println("Enter Number of Threads : ");
-        int numberOfThreads =  scanner.nextInt();
+       
         Thread[] threads = new Thread[numberOfThreads];
         Crawler crawler = new Crawler(numberOfThreads,db);
 
@@ -407,6 +414,8 @@ public static void Continue(DataBase db)
         {
             threads[j].join();
         }
+
+
 
  
 //
