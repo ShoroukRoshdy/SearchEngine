@@ -20,12 +20,18 @@ import static searchengine.Indexer.documents;
  *
  * @author aliaa
  */
+import org.slf4j.LoggerFactory;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+
+
 
 public class SearchEngine {
     
     static Indexer indexer;
     static DataBase db;
     static Crawler crawler;
+    
     
     public static ArrayList<Document> LoadDoc()
     {
@@ -61,6 +67,14 @@ public class SearchEngine {
         
 //      Run Indexer
         indexer.toRun();
+    }
+    
+    
+    static Logger root = (Logger) LoggerFactory
+            .getLogger(Logger.ROOT_LOGGER_NAME);
+
+    static {
+        root.setLevel(Level.INFO);
     }
     
 }
