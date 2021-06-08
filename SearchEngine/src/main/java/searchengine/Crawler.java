@@ -64,7 +64,7 @@ public class Crawler implements Runnable {
         {  
             synchronized(database)
             {
-                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 500)
+                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 5000)
                     break;
                 
                 url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
@@ -177,7 +177,7 @@ public class Crawler implements Runnable {
 
 
           
-        } while (visited< 500);
+        } while (visited< 5000);
         System.out.println("Thread: " + Thread.currentThread().getName() + " Finished" );           
 
     }
