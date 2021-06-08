@@ -12,7 +12,8 @@ import android.widget.TextView;
 public class WebsiteActivity extends AppCompatActivity {
 
     private TextView Url;
-   private  WebView web;
+    private  WebView web;
+    String query;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,11 +22,11 @@ public class WebsiteActivity extends AppCompatActivity {
         Url =findViewById(R.id.TheUrl);
         web=(WebView) findViewById(R.id.webview);
 
- ////////////////////////////////////////////////////////////getting the url
+        ////////////////////////////////////////////////////////////getting the url
         Intent intent = getIntent();
         Bundle b = getIntent().getExtras();
         if (b != null) {
-            String query = b.getString("key");
+            query = b.getString("key");
             Url.setText(query);
         }
 ///////////////////////////////////// showing the back button in action bar
@@ -34,8 +35,8 @@ public class WebsiteActivity extends AppCompatActivity {
 
 //////////////////////////////////////////////////displaying the Url
         web.setWebViewClient(new WebViewClient());
-       // web.loadUrl("http://www.google.com");  /// here we pass the url
-        web.loadUrl("query");
+        // web.loadUrl("http://www.google.com");  /// here we pass the url
+        web.loadUrl(query);
     }
 
     @Override

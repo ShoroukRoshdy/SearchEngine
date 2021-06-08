@@ -25,16 +25,17 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ResultsActivity extends AppCompatActivity  {
-      TextView searchquery;
-      TextView numberofresults;
-      TextView numberOfPage;
-      String query;
-      private RecyclerView recycleUrl;
-      private UrlAdapter myAdapter;
-      private RecyclerView.LayoutManager MLayout;
-      private int currentPage=1;
-      Button nextbttn;
-      Button backbttn;
+    TextView searchquery;
+    TextView numberofresults;
+    TextView numberOfPage;
+    String query;
+    private RecyclerView recycleUrl;
+    private UrlAdapter myAdapter;
+    private RecyclerView.LayoutManager MLayout;
+    private int currentPage=1;
+    int totalPages=1;
+    Button nextbttn;
+    Button backbttn;
     ArrayList<UrlItem> urllist;
     ArrayList<UrlItem> pagelist;
     @Override
@@ -56,7 +57,7 @@ public class ResultsActivity extends AppCompatActivity  {
         Intent intent = getIntent();
         Bundle b = getIntent().getExtras();
         if (b != null) {
-            String query = b.getString("key");
+            query = b.getString("key");
             searchquery.setText(query);
         }
         ///////////////////////////////////////////////////recycleView
@@ -64,7 +65,6 @@ public class ResultsActivity extends AppCompatActivity  {
         ///////////////////////////////////////////////////////////////////////////////// get api
         Retrofit retrofit = new Retrofit.Builder().baseUrl("http://10.0.2.2:8080/").   // to be changed to  "10.0.2.2:portnumber/"
                 addConverterFactory(GsonConverterFactory.create()).build();
-
 
         JsonPlaceHolderApi jsonPlaceHolderApi = retrofit.create(JsonPlaceHolderApi.class);
 
@@ -84,12 +84,29 @@ public class ResultsActivity extends AppCompatActivity  {
                 }
                 numberofresults.setText(" "+urllist.size()+" found");
                 //page of zero
-                for(int i=0 ;i<10 ;i++)
+                if ((urllist.size()/10)*10 < urllist.size())
                 {
-                    pagelist.add(urllist.get(i));
+                    totalPages = (urllist.size()/10) + 1;
+                }
+                else
+                {
+                    totalPages = (urllist.size()/10);
                 }
 
-                numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
+                if(urllist.size() > 10) {
+                    for (int i = 0; i < 10; i++) {
+                        pagelist.add(urllist.get(i));
+                    }
+                }
+                else
+                {
+                    for (UrlItem url : urllist) {
+                        pagelist.add(new UrlItem(1, 2, url.getTitle(), url.getText()));
+                    }
+                }
+
+
+                numberOfPage.setText("P"+(currentPage)+" of P"+totalPages+"");
 
                 recycleUrl = findViewById(R.id.recycleView);
                 recycleUrl.setHasFixedSize(true);
@@ -114,93 +131,107 @@ public class ResultsActivity extends AppCompatActivity  {
             @Override
             public void onFailure(Call<List<UrlItem>> call, Throwable t)
             {
-               numberofresults.setText(t.toString());
+                numberofresults.setText(t.toString());
             }
         });
         ////////////////////////////////////////////////////////////////pages handling
         nextbttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(currentPage<10)
-                {
-                    pagelist.clear();
-                    currentPage=currentPage+1;
-                    numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
-                    pagelist.add(urllist.get(((currentPage-1)*10)-1));
-                    for(int i=0+(currentPage-1)*10 ;i<10*currentPage ;i++)
-                    {
-                        pagelist.add(urllist.get(i));
-                    }
-
-                    numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
-                    recycleUrl = findViewById(R.id.recycleView);
-                    recycleUrl.setHasFixedSize(true);
-                    MLayout = new LinearLayoutManager(ResultsActivity.this);
-                    myAdapter = new UrlAdapter(pagelist);
-                    recycleUrl.setLayoutManager(MLayout);
-                    recycleUrl.setAdapter(myAdapter);
-
-                    myAdapter.setOnItemClickListener(new UrlAdapter.OnItemClickListenser() {
-                        @Override
-                        public void onItemClick(int position) {
-                            String url= pagelist.get(position).getText();
-                            Intent intent = new Intent(ResultsActivity.this,WebsiteActivity.class);
-                            Bundle b = new Bundle();
-                            b.putString("key",url);
-                            intent.putExtras(b); //Put your id to your next Intent
-                            startActivity(intent);
-                            finish();
+                if (urllist.size() > 10) {
+                    if (currentPage < totalPages) {
+                        pagelist.clear();
+                        currentPage = currentPage + 1;
+                        numberOfPage.setText("P" + (currentPage) + " of P" + totalPages + "");
+//
+//                        }
+                        int page = currentPage;
+                        int perPage = 10;
+                        int start = (page-1)*perPage;
+                        for (int i =start; i<start+perPage;++i)
+                        {
+                            if (i < urllist.size())
+                                pagelist.add(urllist.get(i));
                         }
-                    });
+
+//
+                        numberOfPage.setText("P" + (currentPage) + " of P" + totalPages + "");
+                        recycleUrl = findViewById(R.id.recycleView);
+                        recycleUrl.setHasFixedSize(true);
+                        MLayout = new LinearLayoutManager(ResultsActivity.this);
+                        myAdapter = new UrlAdapter(pagelist);
+                        recycleUrl.setLayoutManager(MLayout);
+                        recycleUrl.setAdapter(myAdapter);
+
+                        myAdapter.setOnItemClickListener(new UrlAdapter.OnItemClickListenser() {
+                            @Override
+                            public void onItemClick(int position) {
+                                String url = pagelist.get(position).getText();
+                                Intent intent = new Intent(ResultsActivity.this, WebsiteActivity.class);
+                                Bundle b = new Bundle();
+                                b.putString("key", url);
+                                intent.putExtras(b); //Put your id to your next Intent
+                                startActivity(intent);
+                                finish();
+                            }
+                        });
 
 
+                    }
                 }
 
             }
         });
-      //////////////////////////////////////////////////////////////////////////// Back button
+        //////////////////////////////////////////////////////////////////////////// Back button
         backbttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-
-                if(currentPage>1)
+                if (urllist.size() > 10)
                 {
-                    pagelist.clear();
-                    currentPage=currentPage-1;
-                    numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
+                    if (currentPage > 1) {
+                        pagelist.clear();
+                        currentPage = currentPage - 1;
+                        numberOfPage.setText("P" + (currentPage) + " of P" + urllist.size() / 10 + "");
 
 
-
-                    for(int i=0+(currentPage-1)*10 ;i<10*currentPage ;i++)
-                    {
-                        pagelist.add(urllist.get(i));
-                    }
-
-
-
-                    numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
-                    recycleUrl = findViewById(R.id.recycleView);
-                    recycleUrl.setHasFixedSize(true);
-                    MLayout = new LinearLayoutManager(ResultsActivity.this);
-                    myAdapter = new UrlAdapter(pagelist);
-                    recycleUrl.setLayoutManager(MLayout);
-                    recycleUrl.setAdapter(myAdapter);
-
-                    myAdapter.setOnItemClickListener(new UrlAdapter.OnItemClickListenser() {
-                        @Override
-                        public void onItemClick(int position) {
-                            String url= pagelist.get(position).getText();
-                            Intent intent = new Intent(ResultsActivity.this,WebsiteActivity.class);
-                            Bundle b = new Bundle();
-                            b.putString("key",url);
-                            intent.putExtras(b); //Put your id to your next Intent
-                            startActivity(intent);
-
+//                    for (int i = 0 + (currentPage - 1) * 10; i < 10 * currentPage; i++) {
+//                        pagelist.add(urllist.get(i));
+//                    }
+                        int page = currentPage;
+                        int perPage = 10;
+                        int start = (page-1)*perPage;
+                        for (int i =start; i<start+perPage;++i)
+                        {
+                            if (i < urllist.size())
+                                pagelist.add(urllist.get(i));
                         }
-                    });
 
 
+
+                        numberOfPage.setText("P" + (currentPage) + " of P" + urllist.size() / 10 + "");
+                        recycleUrl = findViewById(R.id.recycleView);
+                        recycleUrl.setHasFixedSize(true);
+                        MLayout = new LinearLayoutManager(ResultsActivity.this);
+                        myAdapter = new UrlAdapter(pagelist);
+                        recycleUrl.setLayoutManager(MLayout);
+                        recycleUrl.setAdapter(myAdapter);
+
+                        myAdapter.setOnItemClickListener(new UrlAdapter.OnItemClickListenser() {
+                            @Override
+                            public void onItemClick(int position) {
+                                String url = pagelist.get(position).getText();
+                                Intent intent = new Intent(ResultsActivity.this, WebsiteActivity.class);
+                                Bundle b = new Bundle();
+                                b.putString("key", url);
+                                intent.putExtras(b); //Put your id to your next Intent
+                                startActivity(intent);
+
+                            }
+                        });
+
+
+                    }
                 }
 
 

@@ -1,14 +1,12 @@
 package com.example.search;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-
 import android.content.Intent;
 import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -40,7 +38,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class MainActivity extends AppCompatActivity {
 
     // getting the views from the activity
-
     ArrayList<String> suggestlist = new ArrayList<>();
     private static final int REQUEST_CODE_SPEECH_INPUT = 1000;
     TextView instrc1;
@@ -48,7 +45,6 @@ public class MainActivity extends AppCompatActivity {
     Button searchbttn;
     String FinalQuery;
     AutoCompleteTextView suggestmenu;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,10 +55,11 @@ public class MainActivity extends AppCompatActivity {
 
         searchbttn = findViewById(R.id.button);
         suggestmenu = findViewById(R.id.autotext);
+        ///////////////////////////////////////////////////////////////////////////////
 
+        //////////////////////////////////////////////////database conection
 
-
-        // //////////////////////////////////////////getting the speech to text dialog
+        // getting the speech to text dialog
 
         VoiceBttn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -81,11 +78,12 @@ public class MainActivity extends AppCompatActivity {
                 b.putString("key",FinalQuery);
                 intent.putExtras(b); //Put your id to your next Intent
                 startActivity(intent);
-
+                finish();
                 Toast.makeText(MainActivity.this, FinalQuery, Toast.LENGTH_SHORT).show();
             }
         });
-        /////////////////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////
         /////////////////////////////////////////////////////////////////////////////////////////////API
         suggestmenu.addTextChangedListener(new TextWatcher() {
             @Override
@@ -125,7 +123,6 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<List<String>> call, Throwable t) {
                         suggestlist.add(t.toString());
-                        instrc1.setText(FinalQuery);
                         ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, suggestlist);
                         suggestmenu.setAdapter(adapter);
                         //numberofresults.setText(t.toString());
@@ -143,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
-
+    /////////////////////////////
     ///////////////////////////////function for the mic button
     private void speak() {
         //intent to show speech
@@ -154,12 +151,12 @@ public class MainActivity extends AppCompatActivity {
 
         //the intent
         try {
+
             startActivityForResult(intent, REQUEST_CODE_SPEECH_INPUT);
 
         } catch (Exception e) {
             Toast.makeText(this, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
-
 
     }
 
@@ -214,10 +211,10 @@ public class MainActivity extends AppCompatActivity {
     }
 ////////////////////////////////////////////////////////////////////////////////////////end action bar search
 
-    @Override
-    public boolean onSupportNavigateUp() {
-        onBackPressed();
-        return true;
-    }
+
+
+
+
+
 
 }
