@@ -10,7 +10,7 @@ public class UrlItem {
     private int id;
     @SerializedName("title")
     private String title;
-    @SerializedName("body")
+    @SerializedName("url")
     private String text;
 
     public UrlItem(int userId, int id, String title, String text) {

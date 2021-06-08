@@ -7,6 +7,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import android.content.Intent;
 import android.speech.RecognizerIntent;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -30,6 +32,7 @@ import android.os.Bundle;
 
 import retrofit2.Call;
 import retrofit2.Callback;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     // getting the views from the activity
 
-    private String[] suggestlist = {"sam", "sara", "sania", "sami"};
+    ArrayList<String> suggestlist = new ArrayList<>();
     private static final int REQUEST_CODE_SPEECH_INPUT = 1000;
     TextView instrc1;
     ImageButton VoiceBttn;
@@ -58,11 +61,8 @@ public class MainActivity extends AppCompatActivity {
         suggestmenu = findViewById(R.id.autotext);
 
 
-       // ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, suggestlist);
-        ///suggestmenu.setAdapter(adapter);
-        //////////////////////////////////////////////////database conection
 
-        // getting the speech to text dialog
+        // //////////////////////////////////////////getting the speech to text dialog
 
         VoiceBttn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,6 +85,63 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, FinalQuery, Toast.LENGTH_SHORT).show();
             }
         });
+        /////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////API
+        suggestmenu.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                FinalQuery= suggestmenu.getText().toString();
+                Retrofit retrofit = new Retrofit.Builder().baseUrl("http://10.0.2.2:8080/").   // to be changed to  "10.0.2.2:portnumber/"
+                        addConverterFactory(GsonConverterFactory.create()).build();
+
+                JsonPlaceHolderApi jsonPlaceHolderApi = retrofit.create(JsonPlaceHolderApi.class);
+
+                Call<List<String>> call = jsonPlaceHolderApi.getSuggestions(FinalQuery);
+                call.enqueue(new Callback<List<String>>() {
+                    @Override
+                    public void onResponse(Call<List<String>> call, Response<List<String>> response) {
+
+                        if (!response.isSuccessful()) {
+
+                            ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, suggestlist);
+                            suggestmenu.setAdapter(adapter);
+                            // searchquery.setText("Code:" + response.code());
+                            return;
+                        }
+
+                        List<String> theApiURLlist = response.body();
+                        suggestlist.clear();
+                        for (String suggest : theApiURLlist) {
+                            suggestlist.add(suggest);
+                        }
+                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, suggestlist);
+                        suggestmenu.setAdapter(adapter);
+                    }
+                    @Override
+                    public void onFailure(Call<List<String>> call, Throwable t) {
+                        suggestlist.add(t.toString());
+                        instrc1.setText(FinalQuery);
+                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, suggestlist);
+                        suggestmenu.setAdapter(adapter);
+                        //numberofresults.setText(t.toString());
+                    }
+                });
+
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
     }
 
     ///////////////////////////////function for the mic button
@@ -97,12 +154,12 @@ public class MainActivity extends AppCompatActivity {
 
         //the intent
         try {
-
             startActivityForResult(intent, REQUEST_CODE_SPEECH_INPUT);
 
         } catch (Exception e) {
             Toast.makeText(this, "" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+
 
     }
 

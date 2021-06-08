@@ -28,6 +28,7 @@ public class ResultsActivity extends AppCompatActivity  {
       TextView searchquery;
       TextView numberofresults;
       TextView numberOfPage;
+      String query;
       private RecyclerView recycleUrl;
       private UrlAdapter myAdapter;
       private RecyclerView.LayoutManager MLayout;
@@ -61,12 +62,13 @@ public class ResultsActivity extends AppCompatActivity  {
         ///////////////////////////////////////////////////recycleView
 
         ///////////////////////////////////////////////////////////////////////////////// get api
-        Retrofit retrofit = new Retrofit.Builder().baseUrl("https://jsonplaceholder.typicode.com/").
+        Retrofit retrofit = new Retrofit.Builder().baseUrl("http://10.0.2.2:8080/").   // to be changed to  "10.0.2.2:portnumber/"
                 addConverterFactory(GsonConverterFactory.create()).build();
+
 
         JsonPlaceHolderApi jsonPlaceHolderApi = retrofit.create(JsonPlaceHolderApi.class);
 
-        Call<List<UrlItem>> call = jsonPlaceHolderApi.getUrls();
+        Call<List<UrlItem>> call = jsonPlaceHolderApi.getUrls(query);
         call.enqueue(new Callback<List<UrlItem>>() {
             @Override
             public void onResponse(Call<List<UrlItem>> call, Response<List<UrlItem>> response)
@@ -88,6 +90,7 @@ public class ResultsActivity extends AppCompatActivity  {
                 }
 
                 numberOfPage.setText("P"+(currentPage)+" of P"+urllist.size()/10+"");
+
                 recycleUrl = findViewById(R.id.recycleView);
                 recycleUrl.setHasFixedSize(true);
                 MLayout = new LinearLayoutManager(ResultsActivity.this);

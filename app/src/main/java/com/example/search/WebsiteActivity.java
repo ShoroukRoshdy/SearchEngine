@@ -34,7 +34,8 @@ public class WebsiteActivity extends AppCompatActivity {
 
 //////////////////////////////////////////////////displaying the Url
         web.setWebViewClient(new WebViewClient());
-        web.loadUrl("http://www.google.com");  /// here we pass the url
+       // web.loadUrl("http://www.google.com");  /// here we pass the url
+        web.loadUrl("query");
     }
 
     @Override
