@@ -1,7 +1,10 @@
 package com.example.search;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
 import android.content.Intent;
 import android.speech.RecognizerIntent;
 import android.view.Menu;
@@ -17,6 +20,7 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -24,8 +28,10 @@ import java.util.Set;
 
 import android.os.Bundle;
 
-
-
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -50,8 +56,10 @@ public class MainActivity extends AppCompatActivity {
 
         searchbttn = findViewById(R.id.button);
         suggestmenu = findViewById(R.id.autotext);
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, suggestlist);
-        suggestmenu.setAdapter(adapter);
+
+
+       // ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, suggestlist);
+        ///suggestmenu.setAdapter(adapter);
         //////////////////////////////////////////////////database conection
 
         // getting the speech to text dialog
@@ -149,10 +157,10 @@ public class MainActivity extends AppCompatActivity {
     }
 ////////////////////////////////////////////////////////////////////////////////////////end action bar search
 
-
-
-
-
-
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
 
 }

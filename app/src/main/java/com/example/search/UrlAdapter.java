@@ -14,6 +14,16 @@ import java.util.ArrayList;
 
 public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.ExampleViewHolder> {
     private ArrayList<UrlItem> thecontent ;
+    private OnItemClickListenser mlistener;
+    public void setOnItemClickListener (OnItemClickListenser listener)
+    {
+        mlistener=listener;
+    }
+
+    public interface OnItemClickListenser
+    {
+        void onItemClick(int position);
+    }
 
     public static class  ExampleViewHolder extends RecyclerView.ViewHolder
 
@@ -21,10 +31,23 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.ExampleViewHolde
         public TextView text1;
         public TextView text2;
 
-        public ExampleViewHolder(@NonNull @NotNull View itemView) {
+        public ExampleViewHolder(@NonNull @NotNull View itemView,OnItemClickListenser listenser) {
             super(itemView);
             text1=itemView.findViewById(R.id.headline);
             text2=itemView.findViewById(R.id.urlofstite);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if(listenser!=null)
+                    {
+                        int postion = getAdapterPosition();
+                        if(postion!=RecyclerView.NO_POSITION);
+                        {
+                            listenser.onItemClick(postion);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -38,7 +61,7 @@ public class UrlAdapter extends RecyclerView.Adapter<UrlAdapter.ExampleViewHolde
     @Override
     public ExampleViewHolder onCreateViewHolder(@NonNull @NotNull ViewGroup parent, int viewType) {
         View v= LayoutInflater.from(parent.getContext()).inflate(R.layout.card,parent,false);
-        ExampleViewHolder hold =new ExampleViewHolder(v);
+        ExampleViewHolder hold =new ExampleViewHolder(v,mlistener);
         return hold;
     }
 
