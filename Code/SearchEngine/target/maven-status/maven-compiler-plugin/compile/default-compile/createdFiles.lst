@@ -1,0 +1,12 @@
+searchengine\DataBase.class
+searchengine\Indexer$IndexerThread.class
+searchengine\Indexer$MyPair.class
+searchengine\Crawler.class
+searchengine\Indexer$WordDetails.class
+searchengine\SearchEngine.class
+searchengine\Indexer$WordsPair.class
+searchengine\Indexer.class
+searchengine\search\SearchServices.class
+searchengine\search\QueryProcessorController.class
+searchengine\QueryProcessor.class
+searchengine\search\Results.class
