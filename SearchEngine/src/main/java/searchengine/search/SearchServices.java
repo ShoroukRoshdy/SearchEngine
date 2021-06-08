@@ -28,7 +28,15 @@ public class SearchServices {
 
     public ArrayList<String> getSuggestions(String word)
     {
-        String search =  '^'+ word + ".*" ;
+        word = word.replaceAll("[^a-zA-Z @!]", ""); // <---------- Not sure if it's accurate
+        SnowballStemmer snowballStemmer = new englishStemmer();
+        String stemWord;
+        snowballStemmer.setCurrent(word);
+        snowballStemmer.stem();
+        stemWord= snowballStemmer.getCurrent();
+        stemWord= stemWord.toLowerCase();
+        
+        String search =  '^'+ stemWord + ".*" ;
         BasicDBObject regex = new BasicDBObject().append("$regex",search);
 
         BasicDBObject findQuery = new BasicDBObject().append("Word", regex);
@@ -56,7 +64,8 @@ public class SearchServices {
         stemWord= stemWord.toLowerCase();
         
         BasicDBObject findQuery = new BasicDBObject().append("Word", stemWord);
-        
+
+                
         DBObject object =  db.getDatabase().getCollection("WordDetails").findOne(findQuery); 
         
         System.out.println(object);
