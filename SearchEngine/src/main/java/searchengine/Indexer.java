@@ -313,7 +313,7 @@ public class Indexer
                                         }
                           //---------------------------- IDF ---------------------- //
                           
-                                        idf=Math.log(totalDocNumber/urlsCounter);
+                                        idf=Math.log(5000/urlsCounter);
 
                                        // -------------------------- Updating the document   -------------------------- //
                                       BasicDBObject searchQuery = new BasicDBObject();
@@ -330,7 +330,7 @@ public class Indexer
                                     else
                                         {
                             
-                                            idf=Math.log(totalDocNumber/1); //<------ only 1 document so far
+                                            idf=Math.log(5000/1); //<------ only 1 document so far
                                             //---------------------> First occurence of the word
 
                                            Map<String,String> url=Map.of("url1",documents.get(r).location());;
@@ -372,7 +372,7 @@ public class Indexer
     {
         db.getCollection("WordDetails").drop();
            // ------------------------ Get total no. of documents ------------------------ //
-             totalDocNumber=db.getDatabase().getCollection("Seeds").find().count();
+//             totalDocNumber=db.getDatabase().getCollection("Seeds").find().count();
              // ------------------------ Reading stop words from the .txt file ------------------------ //
             try {
                 File myObj = new File("stopwords.txt");

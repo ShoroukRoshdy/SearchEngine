@@ -37,7 +37,8 @@ public class SearchEngine {
     {
 //        load visited fields only !
         ArrayList<Document> documents = new ArrayList<Document>();
-        DBCursor cursor = db.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true));
+        
+        DBCursor cursor = db.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true).append("$exists", new BasicDBObject("Document", true)));
         List<DBObject> DBARRAY = cursor.toArray();
         for(int i =0 ; i  <DBARRAY.size();i++)
         {

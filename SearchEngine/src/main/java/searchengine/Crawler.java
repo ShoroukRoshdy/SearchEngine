@@ -60,7 +60,7 @@ public class Crawler implements Runnable {
         {  
             synchronized(database)
             {
-                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 2)
+                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 5000)
                     break;
                 
                 url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
@@ -83,82 +83,84 @@ public class Crawler implements Runnable {
   
 //               Fetch the url
             Document document = null;
+            Elements page_Links = null ;
             try {
-                document = Jsoup.connect(url.get("URL").toString()).timeout(500000).get();
-            } catch (IOException ex) {
-                Logger.getLogger(Crawler.class.getName()).log(Level.SEVERE, null, ex);
-            }
-//            Save document in database
-            BasicDBObject Field = new BasicDBObject().append("$set", new BasicDBObject().append("Document", document.toString()));
-            database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), Field);
-            
+                document = Jsoup.connect(url.get("URL").toString()).get();
+                //            Save document in database
+                BasicDBObject Field = new BasicDBObject().append("$set", new BasicDBObject().append("Document", document.toString()));
+                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), Field);
+                 // parse the HTML document to extract links to other URLs
+                page_Links = document.select("a");
            
-            // parse the HTML document to extract links to other URLs
-            Elements page_Links = document.select("a");
+
                  
 //                Check Robot.txt
-            HashSet<String> Disallow = new HashSet<String>();
-            HashSet<String> Allow = new HashSet<String>();
-            String host=getHostName(url.get("URL").toString());
-            DBObject robot =null;
-            synchronized(robotLock){
-                robot =database.getDatabase().getCollection("Robot").findOne(new BasicDBObject("Host", host));
-            
-                if (robot== null)
-                {
-                    try {
-                        getAllowDisallow(host,Disallow,Allow);
-                    } catch (IOException ex) {
-                        System.out.println("PAGE NOT FOUND");
-                    }
-    //               Add Allow ,Disallows             
-                    DBObject query =  new BasicDBObject("Host",host );
-                    query.put("Allow", Allow);                    
-                    query.put("Disallow", Disallow);
-                    database.insertDocument("Robot",query );
-                }  
-            }
-            if (robot !=null)
-            {
-                BasicDBList DisallowDB = (BasicDBList)robot.get("Disallow"); 
-                for (Object d: DisallowDB)
-                    Disallow.add(d.toString());
-                BasicDBList AllowDB = (BasicDBList) robot.get("Allow");
-                for (Object d: AllowDB)
-                     Allow.add(d.toString()); 
-            }
-//          Loop on all extracted links and push them in the seed_set
-            for (Element newurl : page_Links) {
-                try {
-                    Document doc = Jsoup.connect(url.get("URL").toString()).timeout(500000).get();
-                        
-                    if (newurl.attr("abs:href") == "" )
-                        continue;
+                HashSet<String> Disallow = new HashSet<String>();
+                HashSet<String> Allow = new HashSet<String>();
+                String host=getHostName(url.get("URL").toString());
+                DBObject robot =null;
+                synchronized(robotLock){
+                    robot =database.getDatabase().getCollection("Robot").findOne(new BasicDBObject("Host", host));
 
-                    if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
-                    {   
-                        System.out.println("Disallowed : " + newurl.attr("abs:href"));
-                        continue; 
-                    }   
-//                  Check if this link already in database
-                    synchronized(database)
+                    if (robot== null)
                     {
-                        DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", normalize(newurl.attr("abs:href")) ));
-
-                        if (newurlDB == null)
-                        {
-                            DBObject newURL =  new BasicDBObject("URL",normalize(newurl.attr("abs:href")) );
-                            newURL.put("Visited", false); 
-                            newURL.put("Assigned", false);
-                            database.insertDocument("Seeds",newURL );
-                            database.notify();
+                        try {
+                            getAllowDisallow(host,Disallow,Allow);
+                        } catch (IOException ex) {
+                            System.out.println("PAGE NOT FOUND");
                         }
-
-                    }
-                } catch (IOException ex) {
-                    System.out.println("PAGE NOT FOUND");
+        //               Add Allow ,Disallows             
+                        DBObject query =  new BasicDBObject("Host",host );
+                        query.put("Allow", Allow);                    
+                        query.put("Disallow", Disallow);
+                        database.insertDocument("Robot",query );
+                    }  
                 }
-            } 
+                if (robot !=null)
+                {
+                    BasicDBList DisallowDB = (BasicDBList)robot.get("Disallow"); 
+                    for (Object d: DisallowDB)
+                        Disallow.add(d.toString());
+                    BasicDBList AllowDB = (BasicDBList) robot.get("Allow");
+                    for (Object d: AllowDB)
+                         Allow.add(d.toString()); 
+                }
+    //          Loop on all extracted links and push them in the seed_set
+                for (Element newurl : page_Links) {
+
+                    if (newurl.attr("abs:href") == "" )
+                            continue;
+
+                    try {
+                        Document doc = Jsoup.connect(normalize(newurl.attr("abs:href"))).get();
+
+                        if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
+                        {   
+                            System.out.println("Disallowed : " + newurl.attr("abs:href"));
+                            continue; 
+                        }   
+    //                  Check if this link already in database
+                        synchronized(database)
+                        {
+                            DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", normalize(newurl.attr("abs:href")) ));
+
+                            if (newurlDB == null)
+                            {
+                                DBObject newURL =  new BasicDBObject("URL",normalize(newurl.attr("abs:href")) );
+                                newURL.put("Visited", false); 
+                                newURL.put("Assigned", false);
+                                database.insertDocument("Seeds",newURL );
+                                database.notify();
+                            }
+
+                        }
+                    } catch (IOException ex) {
+                      //  System.out.println("PAGE NOT FOUND");
+                    }
+                } 
+            } catch (IOException ex) {
+                    System.out.println("DOC NOT FOUND");
+            }
                 
 //          Set Visited Value to True 
             BasicDBObject visitedField = new BasicDBObject().append("$set", new BasicDBObject().append("Visited", true));
@@ -172,7 +174,7 @@ public class Crawler implements Runnable {
 
 
           
-        } while (visited<= 2);
+        } while (visited<= 5000);
         System.out.println("Thread: " + Thread.currentThread().getName() + " Finished" );           
 
     }
@@ -321,10 +323,10 @@ public class Crawler implements Runnable {
     public static String normalize(String URL) throws MalformedURLException
     {
     //  Remove #
-        if (URL.contains("#"))
-        {
-            URL =  URL.replace("#", "");
-        }
+//        if (URL.contains("#"))
+//        {
+//            URL =  URL.replace("#", "");
+//        }
         URL  url = new URL(URL);
     //  Add www
         if(!( URL.contains("www.") || URL.contains("WWW.") ))
@@ -332,14 +334,15 @@ public class Crawler implements Runnable {
            URL =  url.getProtocol().toLowerCase()+"://"+"www."+url.getHost().toLowerCase()+url.getPath();   
         }
     //  Remove index.html
-        if(URL.endsWith("index.html")  || URL.endsWith("index.html/"))
+        if(URL.endsWith("index.html")  )
         {
             URL =  URL.replace("index.html", "");
         }
-        if (URL.endsWith("index")  || URL.endsWith("index/"))
+        else if (URL.endsWith("index.html/"))
         {
-            URL =  URL.replace("index", "");
-        } 
+            URL =  URL.replace("index.html/", "");
+
+        }
     //    Add trailing slash    
         if (!URL.endsWith("/"))
         {

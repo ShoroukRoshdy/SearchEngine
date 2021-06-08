@@ -1,7 +1,5 @@
-https://edition.cnn.com/
 https://www.amazon.com/
 https://stackoverflow.com/
-https://en.wikipedia.org/wiki/Watermelon
 https://www.tutorialspoint.com/
 https://www.imdb.com/
 https://www.w3schools.com/python/
