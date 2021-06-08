@@ -1,6 +1,8 @@
 package searchengine;
 
 import com.mongodb.*;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Updates.unset;
 import java.io.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,7 +34,9 @@ public class Crawler implements Runnable {
  
 //////////////////////////////// Data Members ////////////////////////////////////////////
 
-    static int ThreadsNumber;   
+    static int ThreadsNumber; 
+    static int totalNumofDoc;   
+
     static final Object robotLock = new Object();
     private DataBase database;
     static final Object visitedLock = new Object();
@@ -60,7 +64,7 @@ public class Crawler implements Runnable {
         {  
             synchronized(database)
             {
-                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 5000)
+                if (database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Assigned", true)).count() >= 500)
                     break;
                 
                 url =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("Assigned", false));
@@ -86,14 +90,9 @@ public class Crawler implements Runnable {
             Elements page_Links = null ;
             try {
                 document = Jsoup.connect(url.get("URL").toString()).get();
-                //            Save document in database
-                BasicDBObject Field = new BasicDBObject().append("$set", new BasicDBObject().append("Document", document.toString()));
-                database.getCollection("Seeds").update(new BasicDBObject().append("URL", url.get("URL")), Field);
-                 // parse the HTML document to extract links to other URLs
+                // parse the HTML document to extract links to other URLs
                 page_Links = document.select("a");
-           
 
-                 
 //                Check Robot.txt
                 HashSet<String> Disallow = new HashSet<String>();
                 HashSet<String> Allow = new HashSet<String>();
@@ -107,7 +106,6 @@ public class Crawler implements Runnable {
                         try {
                             getAllowDisallow(host,Disallow,Allow);
                         } catch (IOException ex) {
-                            System.out.println("PAGE NOT FOUND");
                         }
         //               Add Allow ,Disallows             
                         DBObject query =  new BasicDBObject("Host",host );
@@ -125,39 +123,44 @@ public class Crawler implements Runnable {
                     for (Object d: AllowDB)
                          Allow.add(d.toString()); 
                 }
-    //          Loop on all extracted links and push them in the seed_set
-                for (Element newurl : page_Links) {
+                if (totalNumofDoc <=6000)
+                {
+        //          Loop on all extracted links and push them in the seed_set
+                    for (Element newurl : page_Links) {
 
-                    if (newurl.attr("abs:href") == "" )
-                            continue;
+                        if (newurl.attr("abs:href") == "" )
+                                continue;
 
-                    try {
-                        Document doc = Jsoup.connect(normalize(newurl.attr("abs:href"))).get();
+                        try {
+                            Document doc = Jsoup.connect(normalize(newurl.attr("abs:href"))).get();
 
-                        if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
-                        {   
-                            System.out.println("Disallowed : " + newurl.attr("abs:href"));
-                            continue; 
-                        }   
-    //                  Check if this link already in database
-                        synchronized(database)
-                        {
-                            DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", normalize(newurl.attr("abs:href")) ));
-
-                            if (newurlDB == null)
+                            if ((checkDisallow(newurl.attr("abs:href") ,Disallow) && !checkAllow(newurl.attr("abs:href") ,Allow)))
+                            {   
+                                System.out.println("Disallowed : " + newurl.attr("abs:href"));
+                                continue; 
+                            }   
+        //                  Check if this link already in database
+                            synchronized(database)
                             {
-                                DBObject newURL =  new BasicDBObject("URL",normalize(newurl.attr("abs:href")) );
-                                newURL.put("Visited", false); 
-                                newURL.put("Assigned", false);
-                                database.insertDocument("Seeds",newURL );
-                                database.notify();
-                            }
+                                DBObject newurlDB =database.getDatabase().getCollection("Seeds").findOne(new BasicDBObject("URL", normalize(newurl.attr("abs:href")) ));
 
+                                if (newurlDB == null)
+                                {
+                                    DBObject newURL =  new BasicDBObject("URL",normalize(newurl.attr("abs:href")) );
+                                    newURL.put("Visited", false); 
+                                    newURL.put("Assigned", false);
+                                    database.insertDocument("Seeds",newURL );
+                                    totalNumofDoc++;
+
+                                    database.notify();
+                                }
+
+                            }
+                        } catch (IOException ex) {
+    //                        System.out.println("PAGE NOT FOUND" + normalize(  newurl.attr("abs:href")));
                         }
-                    } catch (IOException ex) {
-                      //  System.out.println("PAGE NOT FOUND");
-                    }
-                } 
+                    } 
+                }
             } catch (IOException ex) {
                     System.out.println("DOC NOT FOUND");
             }
@@ -170,11 +173,11 @@ public class Crawler implements Runnable {
                 visited = database.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true)).count();
             }
            
-            System.out.println("I'm thread " + Thread.currentThread().getName() + " , Visited " +visited );           
+            System.out.println("I'm thread " + Thread.currentThread().getName() + " , Visited " +visited  + " , Total " + totalNumofDoc);           
 
 
           
-        } while (visited<= 5000);
+        } while (visited< 500);
         System.out.println("Thread: " + Thread.currentThread().getName() + " Finished" );           
 
     }
@@ -214,8 +217,9 @@ public class Crawler implements Runnable {
         URL urlRobot = new URL(theDomainUrl);
         String theRobotUrl =urlRobot.getProtocol()+"://"+urlRobot.getHost()+"/robots.txt"; 
 
-        try(BufferedReader in = new BufferedReader( new InputStreamReader(new URL(theRobotUrl).openStream())))
+        try
         {
+            BufferedReader in = new BufferedReader( new InputStreamReader(new URL(theRobotUrl).openStream()));
             String line = null;
             while((line = in.readLine()) != null) 
             {
@@ -306,6 +310,7 @@ public class Crawler implements Runnable {
             }  
         }
         catch(MalformedURLException e1) {
+            System.out.print("NO ROBOT.TXT");
         }
            
            
@@ -322,35 +327,27 @@ public class Crawler implements Runnable {
 /////////////////////////////////////////////////  Normalize Functions Functions  ////////////////////////////////////////////////////////////////
     public static String normalize(String URL) throws MalformedURLException
     {
-    //  Remove #
-//        if (URL.contains("#"))
-//        {
-//            URL =  URL.replace("#", "");
-//        }
-        URL  url = new URL(URL);
-    //  Add www
-        if(!( URL.contains("www.") || URL.contains("WWW.") ))
-        {
-           URL =  url.getProtocol().toLowerCase()+"://"+"www."+url.getHost().toLowerCase()+url.getPath();   
-        }
-    //  Remove index.html
+         //  Remove index.html
         if(URL.endsWith("index.html")  )
         {
             URL =  URL.replace("index.html", "");
         }
-        else if (URL.endsWith("index.html/"))
+        
+        URL = URL.replaceAll("/#", "/");
+        
+        URL  url = new URL(URL);
+    //  Add www
+        if(!( URL.contains("www.") || URL.contains("WWW.") ))
         {
-            URL =  URL.replace("index.html/", "");
-
+           URL =  url.getProtocol().toLowerCase()+"://"+"www."+url.getHost().toLowerCase() + url.getPath();   
         }
-    //    Add trailing slash    
-        if (!URL.endsWith("/"))
-        {
-            URL =  URL+ "/";  
+        url = new URL(URL);
+        try {
+            URI uri = new URI(url.getProtocol(),url.getUserInfo(),url.getHost(),url.getPort(),url.getPath(),url.getQuery(),url.getRef());
+            URL = uri.toASCIIString();
+        } catch (URISyntaxException ex) {
         }
-
         return URL;
-
     }
 
 /////////////////////////////////////////////////  Loading Functions  ////////////////////////////////////////////////////////////////
@@ -359,7 +356,7 @@ public class Crawler implements Runnable {
     //  Reading From seeds.txt into database           
         db.getCollection("Seeds").drop();
         db.getCollection("Robot").drop();
-
+        
         File seeds_File = new File("seeds.txt");
         Scanner myReader = new Scanner(seeds_File);
         while (myReader.hasNextLine()) {
@@ -367,6 +364,7 @@ public class Crawler implements Runnable {
             seeds.put("Visited", false); 
             seeds.put("Assigned", false);
             db.insertDocument("Seeds",seeds );
+            totalNumofDoc++;
         }
         myReader.close();
 
@@ -374,6 +372,8 @@ public class Crawler implements Runnable {
 
     public static void Continue(DataBase db)
     {
+      
+        totalNumofDoc = db.getCollection("Seeds").find().count();
         BasicDBObject newField = new BasicDBObject().append("$set", new BasicDBObject().append("Assigned", false));
         DBObject object = new BasicDBObject("Assigned", true);
         object.put("Visited", false);

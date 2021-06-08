@@ -1,6 +1,6 @@
-https://www.amazon.com/
-https://stackoverflow.com/
+https://www.economist.com/
 https://www.tutorialspoint.com/
+https://www.empireonline.com/movies/news/
 https://www.imdb.com/
 https://www.w3schools.com/python/
 https://www.bbc.com/

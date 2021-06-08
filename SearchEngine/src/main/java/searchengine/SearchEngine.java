@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Scanner;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import static searchengine.Indexer.documents;
-
 /**
  *
  * @author aliaa
@@ -33,21 +31,24 @@ public class SearchEngine {
     static Crawler crawler;
     
     
-    public static ArrayList<Document> LoadDoc()
+    public static void LoadDoc(ArrayList<Document> docs )
     {
 //        load visited fields only !
-        ArrayList<Document> documents = new ArrayList<Document>();
-        
-        DBCursor cursor = db.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true).append("$exists", new BasicDBObject("Document", true)));
-        List<DBObject> DBARRAY = cursor.toArray();
-        for(int i =0 ; i  <DBARRAY.size();i++)
-        {
-            Document doc = Jsoup.parse(DBARRAY.get(i).get("Document").toString(),DBARRAY.get(i).get("URL").toString());
-            documents.add(doc);
-        }    
-        System.out.println(" Number of Document " + documents.size());
+        Document doc;
+        try {
+            DBCursor cursor = db.getDatabase().getCollection("Seeds").find(new BasicDBObject("Visited", true));
+            List<DBObject> DBARRAY = cursor.toArray();
+            
+            for(int i =0 ; i  <DBARRAY.size();i++)
+            {
+                doc = Jsoup.connect(DBARRAY.get(i).get("URL").toString()).get();
+                docs.add(doc);
+            }  
+            System.out.println("Start Loading " + docs.size());
 
-        return documents;
+        } catch (IOException ex) {
+            java.util.logging.Logger.getLogger(SearchEngine.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+        }
     }
     
     public static void main(String[] args) throws IOException, InterruptedException
@@ -59,12 +60,19 @@ public class SearchEngine {
         indexer = new Indexer();
         crawler = new Crawler(numberOfThreads,db);
 //        Run Crawler
+       
         crawler.toRun(db,numberOfThreads);
         
-        ArrayList<Document> documents  = LoadDoc();
+        ArrayList<Document> document2 = new ArrayList<Document>();
+        LoadDoc(document2);
+        
+        System.out.println(" Number of Document 2 " + document2.size());
+
 //       Pass Documents and ThreadNumbers
+
         indexer.setThreadsNumber(numberOfThreads);
-        indexer.setDocuments(documents);
+        
+        indexer.setDocuments(document2);
         
 //      Run Indexer
         indexer.toRun();
