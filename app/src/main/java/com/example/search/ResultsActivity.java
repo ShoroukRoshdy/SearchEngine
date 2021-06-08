@@ -155,7 +155,7 @@ public class ResultsActivity extends AppCompatActivity  {
 
             }
         });
-      ////////////////////////////////////////////////////////////////////////////
+      //////////////////////////////////////////////////////////////////////////// Back button
         backbttn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -193,7 +193,7 @@ public class ResultsActivity extends AppCompatActivity  {
                             b.putString("key",url);
                             intent.putExtras(b); //Put your id to your next Intent
                             startActivity(intent);
-                            finish();
+
                         }
                     });
 
@@ -208,9 +208,8 @@ public class ResultsActivity extends AppCompatActivity  {
 
     @Override
     public boolean onSupportNavigateUp() {
-        startActivity(new Intent(ResultsActivity.this,MainActivity.class));
+        onBackPressed();
         return true;
     }
-
 
 }

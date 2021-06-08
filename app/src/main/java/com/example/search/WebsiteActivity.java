@@ -37,6 +37,10 @@ public class WebsiteActivity extends AppCompatActivity {
         web.loadUrl("http://www.google.com");  /// here we pass the url
     }
 
-
+    @Override
+    public boolean onSupportNavigateUp() {
+        onBackPressed();
+        return true;
+    }
 
 }

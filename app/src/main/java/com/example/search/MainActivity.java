@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
                 b.putString("key",FinalQuery);
                 intent.putExtras(b); //Put your id to your next Intent
                 startActivity(intent);
-                finish();
+
                 Toast.makeText(MainActivity.this, FinalQuery, Toast.LENGTH_SHORT).show();
             }
         });
